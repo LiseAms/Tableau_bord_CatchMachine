@@ -123,6 +123,21 @@ ui <- page_navbar(
               fill = FALSE,
               
               # ================= COLONNE GAUCHE =================
+              
+              #chaque case est codée de la même façon : 
+              
+              # div(                            
+              #   class = "d-flex flex-column",   # format de la case, ici on veut des bordures 
+              #   
+              #   card(class = "dashboard-card",  # format case avec bordures
+              #        card_header("TITRE"),      # ici on met le titre de la case , c'est ce qui s'affiche en haut de la case concernée 
+              #
+              #                     #la suite du code concerne le contenu de la case et est spécifique à chaque type d'affichage, ici les explications : 
+              #                                   # fileInput = permet de loader un fichier ; checkboxInput = permet de cocher une case ; selectInput = permet de selectionner un élément dans un menu déroulant qui va determiner ce qui est traité dans la case
+              #                                   # withSpinner() = affiche le logo de chargement le temps que les codes tournent . 
+              #                                   # dans withSpinner() il y a plusieurs arguments différents, selon le type d'élément affiché (uiOutput = texte ; DTOutput = tableau déroulant ; plotOutput = graphique ; tableOutput = tableau simple ;)
+              #   ),
+                
               div(
                 class = "d-flex flex-column",
                 
@@ -308,18 +323,18 @@ ui <- page_navbar(
 # =============================================================================
 # SERVER
 # =============================================================================
-# contenu du Tableau de Bord : partie 
+# contenu du Tableau de Bord : partie qui code concrêtement ce qu'il y a dans le TB et ce qui est appelé par le UI pour être ensuite affiché
 
 server <- function(input, output, session) {
   
   # -------------------------------------------------------------------
-  # Lecture + nettoyage
+  # Lecture + nettoyage :
   # -------------------------------------------------------------------
-  raw_data <- reactive({
+  raw_data <- reactive({                                                        # reactive veut dire qu'on peut intéragir avec ce qui est uploadé. Ici le fichier mis dans la case correspondante
     req(input$file)
     read_delim(input$file$datapath,
-               delim = ";", escape_double = FALSE, trim_ws = TRUE,
-               skip = 2)
+               delim = ";", escape_double = FALSE, trim_ws = TRUE,              # format de lecture du csv
+               skip = 2)                                                        # Si le format de csv CatchMachine change et qu'il n'y a plus 2 lignes de texte avant le réel tableau de données, alors il faut changer dans le skip=2 et mettre la nouvelle valeur
   })
   
   df <- reactive({
@@ -333,15 +348,15 @@ server <- function(input, output, session) {
       )
     )
     
-    withProgress(message = "Nettoyage des données en cours...", value = 0.3, {
+    withProgress(message = "Nettoyage des données en cours...", value = 0.3, {  # affiche un message si c'est long à charger pour que les utilisateurs sachent que ça fonctionne et que ça ne beug pas. 
       result <- tryCatch({
-        clean_data(
-          data_raw          = raw_data(),
-          sp_taille_poids   = sp_taille_poids,
-          date_min          = "2025-01-01" # à changer si la date de début de l'analyse des données est à changer
+        clean_data(                                                             # appelle le script clean_data qui est fourni dans le dossier 
+          data_raw          = raw_data(),                                       # récupère les données catchmachine chargées précedemment. 
+          sp_taille_poids   = sp_taille_poids,                                  # récupère le tableau de données des tailles et poids max des espèces. Ce fichier doit être dans le dossier avec l'application pour que cela fonctionne
+          date_min          = "2025-01-01"                                      # à changer ici si la date de début de l'analyse des données est à changer
         )
       }, error = function(e) {
-        validate(paste("Erreur lors du nettoyage des données :", conditionMessage(e)))
+        validate(paste("Erreur lors du nettoyage des données :", conditionMessage(e))) 
       })
       incProgress(0.7, detail = "Terminé")
       result
@@ -350,18 +365,17 @@ server <- function(input, output, session) {
   
   # -------------------------------------------------------------------
   # Poids utilisé (brut ou corrigé) -> colonne commune poids_final_total
-  # pour que CPUE et Biomasse s'écrivent une seule fois, quel que soit
-  # l'état de la case à cocher.
+  # pour que CPUE et Biomasse s'écrivent une seule fois, quel que soit l'état de la case à cocher.
   # -------------------------------------------------------------------
-  data_avec_poids <- reactive({
+  data_avec_poids <- reactive({              
     req(df())
     
-    if (isTRUE(input$utiliser_correction_poids)) {
+    if (isTRUE(input$utiliser_correction_poids)) {                              # si la case de correction des poids est cochée dans l'appli, alors cette partie est utilisée
       validate(
-        need(exists("tableau_a_b_especes"),
+        need(exists("tableau_a_b_especes"),                                     # vérifie que le tableau avec les coefficients a et b est bien présent dans le dossier
              "Le référentiel tableau_a_b_especes n'est pas chargé dans global.R : la correction des poids est indisponible.")
       )
-      appliquer_correction_poids(df(), tableau_a_b_especes)
+      appliquer_correction_poids(df(), tableau_a_b_especes)                     # applique la fonction appliquer_correction_poids définie au début de ce script
     } else {
       # Pas de correction : le poids déclaré brut est utilisé tel quel comme "total" de la ligne
       df() %>% mutate(poids_final_total = Poids_g)
@@ -369,11 +383,12 @@ server <- function(input, output, session) {
   })
   
   # -------------------------------------------------------------------
-  # Années disponibles -> alimente automatiquement TOUS les menus
-  # déroulants d'année dès qu'un nouveau CSV est chargé
-  # -------------------------------------------------------------------
+  # Menus déroulants : Rajouter en dessous les nouveaux menus si besoin
+
+  
+    # Années disponibles -> alimente automatiquement TOUS les menus déroulants d'année dès qu'un nouveau CSV est chargé
   observeEvent(df(), {
-    annees <- sort(unique(df()$annee)) # fait la liste de toutes les années dispo dans les données 
+    annees <- sort(unique(df()$annee))                                          # fait la liste de toutes les années disponibles dans les données 
     choix  <- c("Toutes les années", as.character(annees))
     
     updateSelectInput(session, "annee_info", choices = choix, selected = "Toutes les années")
