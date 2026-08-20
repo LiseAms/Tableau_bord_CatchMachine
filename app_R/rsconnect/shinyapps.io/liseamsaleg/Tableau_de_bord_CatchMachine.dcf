@@ -1,0 +1,12 @@
+name: Tableau_de_bord_CatchMachine
+title: Tableau_de_bord_CatchMachine
+username: liseamsaleg
+account: liseamsaleg
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17673696
+bundleId: 12438429
+url: https://liseamsaleg.shinyapps.io/Tableau_de_bord_CatchMachine/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
